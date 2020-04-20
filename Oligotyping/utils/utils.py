@@ -197,12 +197,12 @@ def homopolymer_indel_exists(seq1, seq2):
     # 
     #  causes this function to return false. in order to fix that problem
     #  we perform needleman-wunch alignment here:
-    if sum([seq1.count('-'), seq2.count('-')]) > 1:
-        seq1, seq2 = nw_align(seq1.replace('-', ''), seq2.replace('-', ''))
+    if sum([seq1.count(b'-'), seq2.count(b'-')]) > 1:
+        seq1, seq2 = nw_align(seq1.replace(b'-', b''), seq2.replace(b'-', b''))
 
-    gap_index = seq1.find('-')
+    gap_index = seq1.find(b'-')
     if gap_index == -1:
-        gap_index = seq2.find('-')
+        gap_index = seq2.find(b'-')
 
         # so the gap is in seq2. replace seq1 and 2 so it would be certain
         #  that the sequence with gap is seq1:
@@ -219,13 +219,13 @@ def homopolymer_indel_exists(seq1, seq2):
         i = 3
         while isHP(sequence[gap_index - i - 1:gap_index]):
             i += 1
-        return (gap_index - i, gap_index)
+        return gap_index - i, gap_index
 
     def UpStream(sequence):
         i = 4
         while isHP(sequence[gap_index + 1:gap_index + i + 1]):
             i += 1
-        return (gap_index + 1, gap_index + i)
+        return gap_index + 1, gap_index + i
 
     # check downstream of the gap
     if gap_index >= 3:
@@ -307,7 +307,7 @@ def unique_and_store_alignment(alignment_path, output_path):
     output.close()
     alignment.close()
 
-    return (read_ids, unique_read_counts, most_abundant_unique_read)
+    return read_ids, unique_read_counts, most_abundant_unique_read
 
 
 def generate_TAB_delim_file_from_dict(data_dict, output_file_path, order, first_column='samples'):
@@ -631,7 +631,8 @@ def get_quals_dict(quals_file, alignment_file, output_file_path=None, verbose=Tr
 
         qual_aligned = []
         for i in range(0, len(alignment.seq)):
-            if alignment.seq[i] != '-':
+            #  b'-' = 45
+            if alignment.seq[i] != 45:
                 qual_aligned.append(matching_qual.pop(0))
             else:
                 qual_aligned.append(None)
@@ -746,8 +747,9 @@ def same_but_gaps(sequence1, sequence2):
     if len(sequence1) != len(sequence2):
         raise ValueError("Alignments have different lengths")
 
+    # b'-'[0] = 45  # agc
     for i in range(0, len(sequence1)):
-        if sequence1[i] == '-' or sequence2[i] == '-':
+        if sequence1[i] == 45 or sequence2[i] == 45:
             continue
         if sequence1[i] != sequence2[i]:
             return False
@@ -762,15 +764,15 @@ def trim_uninformative_gaps_from_sequences(sequence1, sequence2):
     columns_to_discard = []
 
     for i in range(0, len(sequence1)):
-        if set([sequence1[i], sequence2[i]]) == set(['-']):
+        if set([sequence1[i], sequence2[i]]) == set(b'-'):
             columns_to_discard.append(i)
         else:
             continue
 
-    s1 = ''.join([sequence1[i] for i in range(0, len(sequence1)) if i not in columns_to_discard])
-    s2 = ''.join([sequence2[i] for i in range(0, len(sequence1)) if i not in columns_to_discard])
+    s1 = bytes([sequence1[i] for i in range(0, len(sequence1)) if i not in columns_to_discard])
+    s2 = bytes([sequence2[i] for i in range(0, len(sequence1)) if i not in columns_to_discard])
 
-    return (s1, s2)
+    return s1, s2
 
 
 def get_temporary_file_names_for_BLAST_search(prefix, directory):
@@ -778,7 +780,7 @@ def get_temporary_file_names_for_BLAST_search(prefix, directory):
     target = get_temporary_file_name(prefix='%s' % prefix, suffix='.db', directory=directory)
     output = get_temporary_file_name(prefix='%s' % prefix, suffix='.b6', directory=directory)
 
-    return (query, target, output)
+    return query, target, output
 
 
 def get_percent_identity_for_N_base_difference(average_read_length, N=1):
@@ -817,9 +819,10 @@ def trim_uninformative_columns_from_alignment(input_file_path):
     while next(input_fasta):
         cols_not_invalid = []
         for i in invalid_columns:
-            if input_fasta.seq[i] != '-':
+            # b'-' = 45
+            if input_fasta.seq[i] != 45:
                 cols_not_invalid.append(i)
-        invalid_columns = [i for i in invalid_columns if not i in cols_not_invalid]
+        invalid_columns = [i for i in invalid_columns if i not in cols_not_invalid]
 
     columns_to_keep = [x for x in range(0, fasta_read_len) if x not in invalid_columns]
 
@@ -832,7 +835,7 @@ def trim_uninformative_columns_from_alignment(input_file_path):
     temp_file = u.FastaOutput(temp_file_path)
 
     while next(input_fasta):
-        new_seq = ''
+        new_seq = b''
         for i in columns_to_keep:
             new_seq += input_fasta.seq[i]
         temp_file.write_id(input_fasta.id)
@@ -884,9 +887,9 @@ def get_terminal_size():
 
 def estimate_expected_max_frequency_of_an_erronous_unique_sequence(number_of_reads, average_read_length,
                                                                    expected_error=1 / 250.0):
-    #  maximum number of occurence of an error driven unique sequence among N reads.
+    #  maximum number of occurrence of an error driven unique sequence among N reads.
     #  of course this maximum assumes that all reads are coming from one template,
-    #  substitution probabilities are homogeneous and there are no systemmatical errors,
+    #  substitution probabilities are homogeneous and there are no systematical errors,
     # so it is a mere approximation, but for our purpose, it is going to be enough:
 
     return round((expected_error * (1 / 3.0)) * ((1 - expected_error) ** (average_read_length - 1)) * number_of_reads)
