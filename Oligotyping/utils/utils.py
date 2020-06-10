@@ -104,7 +104,7 @@ def get_unit_counts_and_percents(units, samples_dict):
         unit_counts[sample] = counts
         unit_percents[sample] = percents
 
-    return (unit_counts, unit_percents)
+    return unit_counts, unit_percents
 
 
 def import_error(e):
@@ -947,7 +947,7 @@ def check_input_alignment(alignment_path, sample_name_separator, progress_func=N
 
     while next(alignment):
         if progress_func and alignment.pos % 5000 == 0:
-            progress_func.update('Reading input; %s, %s samples found' \
+            progress_func.update('Reading input; %s, %s samples found'
                                  % (pretty_print(alignment.pos),
                                     pretty_print(len(samples))))
 
@@ -1284,7 +1284,7 @@ def get_read_objects_from_file(input_file_path, progress_obj=None):
     read_objects = []
 
     if progress_obj:
-        progress_obj.append('Reading input..')
+        progress_obj.append(' Reading input..')
 
     while next(input_fasta):
         read_objects.append(UniqueFASTAEntry(input_fasta.seq, input_fasta.ids, input_fasta.md5id))

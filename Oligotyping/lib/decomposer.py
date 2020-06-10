@@ -627,12 +627,10 @@ class Decomposer:
         # explain it nicely, meren, kthxbye (OP will surely deliver).
 
         iteration = 0
-        it_is_OK_to_pass_this = lambda: iteration > 0 and (not len(self.topology.zombie_nodes))
-
         while 1:
             self.logger.info('refine topology iteration: %d' % iteration)
 
-            if it_is_OK_to_pass_this():
+            if (iteration > 0) and (len(self.topology.zombie_nodes) == 0):
                 self.logger.info('end of refine topology')
 
                 # report the number of outliers removed during the refinement step
@@ -646,13 +644,14 @@ class Decomposer:
                 break
 
             if self.merge_homopolymer_splits:
-                if it_is_OK_to_pass_this():
+                if (iteration > 0) and (len(self.topology.zombie_nodes) == 0):
                     pass
                 else:
                     self._merge_homopolymer_splits(iteration)
 
-            # if iteration != 0: all zombie nodes that were resulted from the iteration-- considered by functions that refines
-            # the topology. whatever is left here as zombie, must actually not be a zombie, but a respectable member of the
+            # if iteration != 0: all zombie nodes that were resulted from the iteration--
+            # considered by functions that refines the topology.
+            # whatever is left here as zombie, must actually not be a zombie, but a respectable member of the
             # society. so. it is time to reset the topology.zombie.
             self.topology.zombie_nodes = []
 
@@ -667,12 +666,14 @@ class Decomposer:
                 # a node, but were betrayed by the nature of the sample or the sequencing platform. either due to
                 # noise, or the identity to the representative of the node they were trapped in based on the
                 # discriminant that happened to be chosen to decompose that branch of the topology. now we are going
-                #  to identify them, and move them out of the outliers bin just to attach them to the topology as a new node.
+                #  to identify them, and move them out of the outliers bin just
+                # to attach them to the topology as a new node.
                 # but since they haven't gone through previous steps of refinements, we can't treat them as a regular
                 # node. so they will be marked as 'zombie' nodes. we are actually in a 'while True' loop and the only
                 # condition to break is to make sure the zombie_nodes bin is empty. in an ideal world it shouldn't take
                 # more than two cycles (zombie bins are introduced, loop goes back to the beginning, they are taken care
-                # of, and when we are here the second time no more zombie bins are found, we're golden). but for the sake
+                # of, and when we are here the second time no more zombie bins are found, we're golden).
+                # but for the sake
                 # of robustness, I didn't want to rely on this and implement this part of the algorithm as a complete
                 # state machine.
 
@@ -1150,10 +1151,13 @@ class Decomposer:
     def _generate_samples_dict(self):
         self.progress.new('Computing Samples Dict')
 
+        # make sure they are initialized
+        self.samples_dict = {}
+        self.samples = []
+
         for node_id in self.topology.final_nodes:
             node = self.topology.nodes[node_id]
-            self.progress.update('Analyzing Node ID: "%s" (size: %d)'
-                                 % (node_id, node.size))
+            self.progress.update('Analyzing Node ID: "%s" (size: %d)' % (node_id, node.size))
 
             for read in node.reads:
                 for read_id in read.ids:
