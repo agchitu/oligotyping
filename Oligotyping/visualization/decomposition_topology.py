@@ -15,7 +15,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-from Oligotyping.utils.utils import pretty_print
+from Oligotyping.utils.print_utils import pretty_print
 
 final_nodes = []
 parent_nodes = []

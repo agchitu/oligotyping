@@ -22,7 +22,7 @@ def MatchScorer(match, mismatch):
 
 equality_scorer = MatchScorer(1, -1)
 default_gap = -1
-default_gap_symbol = '-'
+default_gap_symbol = b'-'
 
 def nw_align(seq1, seq2, scorer=equality_scorer, gap=default_gap, return_score=False):
     """Returns globally optimal alignment of seq1 and seq2."""
@@ -81,16 +81,16 @@ class ScoreMatrix(list):
             return "Empty Score Matrix"
         #add first sequence as first row: skip 2 positions for row label and
         #for the first column, which is initialized to default values
-        rows = ['\t\t' + '\t'.join(self.First)]
+        rows = [b'\t\t' + b'\t'.join(self.First)]
         for index, row in enumerate(self):
             #if it's not the first row, add the appropriate char from the seq
             if index:
                 curr = second[index-1]
             else:
-                curr = ''
+                curr = b''
             #add the row containing the char and the data
-            rows.append('%s\t'%curr + '\t'.join([str(i.Score) for i in row]))
-        return '\n'.join(rows)
+            rows.append(b'%s\t' % curr + b'\t'.join([str(i.Score) for i in row]))
+        return b'\n'.join(rows)
 
     def _init_first_row(self):
         """Hook for matrices that need to initialize the first row."""
@@ -120,13 +120,15 @@ class ScoreMatrix(list):
         #Remember to return sequences that are the correct class. If the class
         #subclasses str, you probably want ''.join rather than str to feed into
         #the constructor, since str() on a list prints the brackets and commas.
-        if isinstance(seq1, str):
-            first_result = seq1.__class__(''.join(aln1))
+        # if isinstance(seq1, str):
+        if isinstance(seq1, bytes):
+            first_result = seq1.__class__(b''.join(aln1))
         else:
             first_result = seq1.__class__(aln1)
             
-        if isinstance(seq2, str):
-            second_result = seq2.__class__(''.join(aln2))
+        # if isinstance(seq2, str):
+        if isinstance(seq2, bytes):
+            second_result = seq2.__class__(b''.join(aln2))
         else:
             second_result = seq2.__class__(aln2)
 
@@ -215,10 +217,10 @@ class NeedlemanWunschMatrix(ScoreMatrix):
                 curr_col -= 1
             elif p == 'left':
                 align_1.append(seq_1[curr_col-1])
-                align_2.append('-')
+                align_2.append(b'-')
                 curr_col -= 1
             elif p == 'up':
-                align_1.append('-')
+                align_1.append(b'-')
                 align_2.append(seq_2[curr_row-1])
                 curr_row -= 1
             else:

@@ -21,7 +21,7 @@ import os
 import sys
 import numpy
 
-from Oligotyping.utils.utils import pretty_print
+from Oligotyping.utils.print_utils import pretty_print
 
 QUERY_ID, SUBJECT_ID, IDENTITY, ALIGNMENT_LENGTH,\
 MISMATCHES, GAPS, Q_START, Q_END, S_START, S_END,\

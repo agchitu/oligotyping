@@ -18,7 +18,7 @@ from scipy import log2 as log
 from numpy import sqrt
 
 import Oligotyping.lib.fastalib as u
-from Oligotyping.utils.utils import pretty_print
+from Oligotyping.utils.print_utils import pretty_print
 from Oligotyping.utils.utils import Progress
 from Oligotyping.utils.utils import Run
 from Oligotyping.utils.utils import P

@@ -27,6 +27,7 @@ from Oligotyping.lib.shared import generate_exclusive_figures
 
 from Oligotyping.utils import blast
 from Oligotyping.utils import utils
+from Oligotyping.utils.print_utils import pretty_print
 from Oligotyping.visualization.frequency_curve_and_entropy import vis_freq_curve
 
 
@@ -316,7 +317,7 @@ class Decomposer:
             self.maximum_variation_allowed = int(round(self.topology.average_read_length * 1.0 / 100)) or 1
 
         self.run.info('maximum_variation_allowed', self.maximum_variation_allowed)
-        self.run.info('total_seq', utils.pretty_print(self.topology.nodes['root'].size))
+        self.run.info('total_seq', pretty_print(self.topology.nodes['root'].size))
         self.run.info('average_read_length', self.topology.average_read_length)
         self.run.info('alignment_length', self.topology.alignment_length)
         self.run.info('output_directory', self.output_directory)
@@ -569,7 +570,7 @@ class Decomposer:
         self.progress.end()
         self.topology.update_final_nodes()
 
-        self.run.info('num_raw_nodes', utils.pretty_print(len(self.topology.final_nodes)))
+        self.run.info('num_raw_nodes', pretty_print(len(self.topology.final_nodes)))
 
         # fin.
 
@@ -638,8 +639,8 @@ class Decomposer:
                 for reason in self.topology.outlier_reasons:
                     count = sum([read_obj.frequency for read_obj in self.topology.outliers[reason]])
                     removed_outliers_total += count
-                    self.run.info('removed_%s' % reason, utils.pretty_print(count))
-                self.run.info('removed_outliers_total', utils.pretty_print(removed_outliers_total))
+                    self.run.info('removed_%s' % reason, pretty_print(count))
+                self.run.info('removed_outliers_total', pretty_print(removed_outliers_total))
 
                 break
 
@@ -711,7 +712,7 @@ class Decomposer:
         # and this has to be fixed at some point (which unfortunately will fuck up the performance drastically
         # once it is fixed, but whatever. science > my pride).
 
-        nz = utils.pretty_print(len(self.topology.zombie_nodes))
+        nz = pretty_print(len(self.topology.zombie_nodes))
         self.progress.new('Merging HP splits :: ITER %d%s' % (iteration,
                                                               ' #Z: %s' % (nz if nz else '')))
 
@@ -829,7 +830,7 @@ class Decomposer:
         # the node, (2) binning reads that are distant from the representative read, and (3) re-assigning them by
         # comparing each read to previously found final nodes.
 
-        sb = utils.pretty_print(len(self.topology.standby_bin))
+        sb = pretty_print(len(self.topology.standby_bin))
         self.progress.new('Removing Outliers :: ITER %d%s' % (iteration, ' #SB: %s' % (sb if sb else '')))
 
         if standby_bin_only:
@@ -986,7 +987,7 @@ class Decomposer:
         for reason in self.topology.outlier_reasons:
             total_relocated_outliers += self._relocate_outliers(reason, refresh_final_nodes=False)
 
-        self.run.info('relocated_outliers_total', utils.pretty_print(total_relocated_outliers))
+        self.run.info('relocated_outliers_total', pretty_print(total_relocated_outliers))
         self._refresh_final_nodes()
 
     def _relocate_outliers(self, reason, refresh_final_nodes=True):
@@ -1012,7 +1013,7 @@ class Decomposer:
                                                                                 self.maximum_variation_allowed)
 
         self.progress.update('Running blastn (num outliers: %s, num final nodes: %s)' %
-                             (utils.pretty_print(len(outliers)), utils.pretty_print(len(self.topology.final_nodes))))
+                             (pretty_print(len(outliers)), pretty_print(len(self.topology.final_nodes))))
         params = "-perc_identity %.2f -max_target_seqs 1" % min_percent_identity
         b = self._perform_blast(query, target, output, params, job='RO_%s_' % reason)
 
@@ -1029,7 +1030,7 @@ class Decomposer:
             self.topology.relocate_outlier(id_to_read_object_dict[_id], similarity_dict[_id].pop(), reason)
 
         self.progress.end()
-        self.run.info('relocated_%s' % reason, utils.pretty_print(num_outliers_relocated))
+        self.run.info('relocated_%s' % reason, pretty_print(num_outliers_relocated))
 
         if refresh_final_nodes:
             self._refresh_final_nodes()
@@ -1105,8 +1106,7 @@ class Decomposer:
 
         if self.no_multi_processes:
             for i in range(0, total_final_nodes):
-                self.progress.update('%s of %s' % (utils.pretty_print(i + 1),
-                                                   utils.pretty_print(total_final_nodes)))
+                self.progress.update('%s of %s' % (pretty_print(i + 1), pretty_print(total_final_nodes)))
                 node_id = self.topology.final_nodes[i]
                 node = self.topology.get_node(node_id)
                 node.store()
@@ -1374,17 +1374,17 @@ class Decomposer:
         self.run.info('exclusive_figures_dict_file_path', exclusive_figures_dict_file_path)
 
     def _report_final_numbers(self):
-        self.run.info('num_samples_in_fasta', utils.pretty_print(len(self.samples)))
-        self.run.info('num_final_nodes', utils.pretty_print(len(self.topology.final_nodes)))
-        self.run.info('num_sequences_after_qc', utils.pretty_print(self.topology.get_final_count()))
+        self.run.info('num_samples_in_fasta', pretty_print(len(self.samples)))
+        self.run.info('num_final_nodes', pretty_print(len(self.topology.final_nodes)))
+        self.run.info('num_sequences_after_qc', pretty_print(self.topology.get_final_count()))
 
         final_outliers_total = 0
         for reason in self.topology.outlier_reasons:
             count = sum([read_obj.frequency for read_obj in self.topology.outliers[reason]])
             final_outliers_total += count
-            self.run.info('final_%s' % reason, utils.pretty_print(count))
+            self.run.info('final_%s' % reason, pretty_print(count))
 
-        self.run.info('final_outliers_total', utils.pretty_print(final_outliers_total))
+        self.run.info('final_outliers_total', pretty_print(final_outliers_total))
 
 
 if __name__ == '__main__':

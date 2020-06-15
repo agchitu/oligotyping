@@ -38,9 +38,9 @@ def main(input_fasta_path, output_fasta_path=None, reverse=False):
         
         output.write_id(fasta.id)
         if reverse:
-            output.write_seq('-' * gaps + fasta.seq, split = False)
+            output.write_seq(b'-' * gaps + fasta.seq, split = False)
         else:
-            output.write_seq(fasta.seq + '-' * gaps, split = False)
+            output.write_seq(fasta.seq + b'-' * gaps, split = False)
     
     
     fasta.close()

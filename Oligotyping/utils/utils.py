@@ -31,6 +31,7 @@ import multiprocessing
 from Oligotyping.lib import fastalib as u
 from Oligotyping.utils.constants import pretty_names
 from Oligotyping.utils.aligner import nw_align
+from Oligotyping.utils.print_utils import pretty_print
 
 P = lambda x, y: '%.2f%%' % (x * 100.0 / y)
 
@@ -726,21 +727,6 @@ def human_readable_number(n):
     postfix = ['', 'K', 'M']
     level = max(0, min(len(postfix) - 1, int(math.floor(math.log10(abs(n)) / 3.0))))
     return '%.0f%s' % (n / 10 ** (3 * level), postfix[level])
-
-
-def pretty_print(n):
-    """Pretty print function for very big integers"""
-    if type(n) != int:
-        return n
-
-    ret = []
-    n = str(n)
-    for i in range(len(n) - 1, -1, -1):
-        ret.append(n[i])
-        if (len(n) - i) % 3 == 0:
-            ret.append(',')
-    ret.reverse()
-    return ''.join(ret[1:]) if ret[0] == ',' else ''.join(ret)
 
 
 def same_but_gaps(sequence1, sequence2):

@@ -15,6 +15,9 @@ import numpy
 import hashlib
 
 
+from Oligotyping.utils.print_utils import pretty_print
+
+
 class FastaOutput:
     def __init__(self, output_file_path):
         self.output_file_path = output_file_path
@@ -56,7 +59,7 @@ class ReadFasta:
 
         while next(self.fasta):
             if self.fasta.pos % 1000 == 0 or self.fasta.pos == 1:
-                sys.stderr.write('\r[fastalib] Reading FASTA into memory: %s' % self.fasta.pos)
+                sys.stderr.write('\r[fastalib] Reading FASTA into memory: %s' % (pretty_print(self.fasta.pos)))
                 sys.stderr.flush()
             self.ids.append(self.fasta.id)
             self.sequences.append(self.fasta.seq)
@@ -102,11 +105,11 @@ class SequenceSource(object):
 
     def init_unique_hash(self):
         if self.progress_obj:
-            self.progress_obj.append('Hashing the reads into memory: %s' % self.pos)
+            self.progress_obj.append('Hashing the reads into memory: %s' % (pretty_print(self.pos)))
             
         while self.next_regular():
             if self.progress_obj and self.pos % 5000 == 0:
-                self.progress_obj.update('Hashing the reads into memory: %s' % self.pos)
+                self.progress_obj.update('Hashing the reads into memory: %s' % (pretty_print(self.pos)))
 
             seq_hash = hashlib.sha1(self.seq.upper()).hexdigest()
             if seq_hash in self.unique_hash_dict:
@@ -204,7 +207,7 @@ class SequenceSource(object):
 
         while next(self):
             if self.pos % 10000 == 0 or self.pos == 1:
-                sys.stderr.write('\r[fastalib] Reading: %s' % self.pos)
+                sys.stderr.write('\r[fastalib] Reading: %s' % (pretty_print(self.pos)))
                 sys.stderr.flush()
             sequence_lengths.append(len(self.seq))
 
