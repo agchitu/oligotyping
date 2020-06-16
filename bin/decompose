@@ -12,6 +12,7 @@
 
 import os
 import sys
+import multiprocessing
 
 try:
     import Oligotyping
@@ -31,12 +32,15 @@ from Oligotyping.utils import parsers
 
 
 if __name__ == '__main__':
+    __spec__ = None
     if '--version' in sys.argv:
         print(parsers.version)
         sys.exit()
 
-    parser = parsers.decomposer()
-    decomposer = Decomposer(parser.parse_args())
+    script_args = parsers.decomposer().parse_args()
+    if script_args.number_of_processes > 1:
+        multiprocessing.set_start_method('spawn')
+    decomposer = Decomposer(script_args)
 
     try:
         decomposer.decompose()
