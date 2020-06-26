@@ -385,29 +385,29 @@ class Node:
             p[3, :] = numpy.count_nonzero(multiplex_reads_seq == 71, axis=0)
             p[4, :] = numpy.count_nonzero(multiplex_reads_seq == 45, axis=0)
 
-        self.logger.info("Counts A %s" % "".join(["%d " % p_ for p_ in p[0, :]]))
-        self.logger.info("Counts G %s" % "".join(["%d " % p_ for p_ in p[1, :]]))
-        self.logger.info("Counts T %s" % "".join(["%d " % p_ for p_ in p[2, :]]))
-        self.logger.info("Counts C %s" % "".join(["%d " % p_ for p_ in p[3, :]]))
-        self.logger.info("Counts - %s" % "".join(["%d " % p_ for p_ in p[4, :]]))
+        # self.logger.info("Counts A %s" % "".join(["%d " % p_ for p_ in p[0, :]]))
+        # self.logger.info("Counts G %s" % "".join(["%d " % p_ for p_ in p[1, :]]))
+        # self.logger.info("Counts T %s" % "".join(["%d " % p_ for p_ in p[2, :]]))
+        # self.logger.info("Counts C %s" % "".join(["%d " % p_ for p_ in p[3, :]]))
+        # self.logger.info("Counts - %s" % "".join(["%d " % p_ for p_ in p[4, :]]))
 
         p = p / self.size
-        self.logger.info("Size - %d" % self.size)
-        self.logger.info("Prob A %s" % "".join(["%g " % p_ for p_ in p[0, :]]))
-        self.logger.info("Prob G %s" % "".join(["%g " % p_ for p_ in p[1, :]]))
-        self.logger.info("Prob T %s" % "".join(["%g " % p_ for p_ in p[2, :]]))
-        self.logger.info("Prob C %s" % "".join(["%g " % p_ for p_ in p[3, :]]))
-        self.logger.info("Prob - %s" % "".join(["%g " % p_ for p_ in p[4, :]]))
+        # self.logger.info("Size - %d" % self.size)
+        # self.logger.info("Prob A %s" % "".join(["%g " % p_ for p_ in p[0, :]]))
+        # self.logger.info("Prob G %s" % "".join(["%g " % p_ for p_ in p[1, :]]))
+        # self.logger.info("Prob T %s" % "".join(["%g " % p_ for p_ in p[2, :]]))
+        # self.logger.info("Prob C %s" % "".join(["%g " % p_ for p_ in p[3, :]]))
+        # self.logger.info("Prob - %s" % "".join(["%g " % p_ for p_ in p[4, :]]))
 
         #  -(p_c*np.log(p_c) + p_a*np.log(p_a) + p_b*np.log(p_b) + p_t*np.log(p_t))
         p = numpy.multiply(p, numpy.ma.log2(p).filled(0))
         p[numpy.isnan(p) | numpy.isinf(p)] = 0
 
-        self.logger.info("ent A %s" % "".join(["%g " % p_ for p_ in p[0, :]]))
-        self.logger.info("ent G %s" % "".join(["%g " % p_ for p_ in p[1, :]]))
-        self.logger.info("ent T %s" % "".join(["%g " % p_ for p_ in p[2, :]]))
-        self.logger.info("ent C %s" % "".join(["%g " % p_ for p_ in p[3, :]]))
-        self.logger.info("ent - %s" % "".join(["%g " % p_ for p_ in p[4, :]]))
+        # self.logger.info("ent A %s" % "".join(["%g " % p_ for p_ in p[0, :]]))
+        # self.logger.info("ent G %s" % "".join(["%g " % p_ for p_ in p[1, :]]))
+        # self.logger.info("ent T %s" % "".join(["%g " % p_ for p_ in p[2, :]]))
+        # self.logger.info("ent C %s" % "".join(["%g " % p_ for p_ in p[3, :]]))
+        # self.logger.info("ent - %s" % "".join(["%g " % p_ for p_ in p[4, :]]))
 
         p = -numpy.sum(p, axis=0)
         # Ignore too small numbers
@@ -419,7 +419,7 @@ class Node:
         self.max_entropy = max(self.entropy)
         self.average_entropy = numpy.mean([e for e in self.entropy if e > 0.05] or [0])
         # log the entropy 
-        self.logger.info("Entropy %s" % "".join(["%g " % en for en in self.entropy]))
+        # self.logger.info("Entropy %s" % "".join(["%g " % en for en in self.entropy]))
         self.logger.info("Max entropy %g" % self.max_entropy)
 
     def set_normalized_m(self, default_min_entropy, most_abundant_unique_sequence_in_the_dataset):
