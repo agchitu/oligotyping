@@ -18,6 +18,7 @@ import numpy
 import shutil
 import pickle
 import logging
+from joblib import Parallel, delayed
 
 import Oligotyping as o
 from Oligotyping.lib import fastalib as u
@@ -29,6 +30,92 @@ from Oligotyping.utils import blast
 from Oligotyping.utils import utils
 from Oligotyping.utils.print_utils import pretty_print
 from Oligotyping.visualization.frequency_curve_and_entropy import vis_freq_curve
+
+
+def _perform_blast(query, target, output, params,
+                   log_file=None, job="NONE",
+                   parallel=False, number_of_processes=1,
+                   number_of_blast_threads=1,
+                   keep_tmp=False, logger_obj=None):
+    s = blast.LocalBLAST(query, target, output, log=log_file)
+    logger_obj.info('local blast request for job "%s": (q) %s (t) %s (o) %s (p) %s (#th) %s'
+                    % (job, query, target, output, params, number_of_blast_threads))
+    s.make_blast_db()
+    logger_obj.info('makeblastdb for %s: %s' % (job, s.makeblastdb_cmd))
+
+    # Add number of threads to blast
+    s.params = "%s -num_threads %d" % (params, number_of_blast_threads)
+
+    if parallel:  # agc
+        s.search_parallel(number_of_processes, 2000, keep_parts=keep_tmp)  # agc
+        logger_obj.info('parallel blastn for %s: %s' % (job, s.search_cmd))
+    else:
+        s.search()
+        logger_obj.info('blastn for %s: %s' % (job, s.search_cmd))
+
+    return s
+
+
+def worker_remove_outliers(node_target, tmp_directory, params, min_percent_identity,
+                           log_file,
+                           no_multi_processes,
+                           number_of_processes,
+                           number_of_blast_threads,
+                           keep_tmp, logger_obj):
+
+        job_name = 'XO_%s_' % node_target.node_id
+        query, target, output = utils.get_temporary_file_names_for_BLAST_search(
+            prefix=job_name, directory=tmp_directory)
+
+        id_to_read_object_dict = {}
+        for read_obj in node_target.reads[1:]:
+            id_to_read_object_dict[read_obj.md5id] = read_obj
+
+        query_obj = u.FastaOutput(query)
+        for _id in id_to_read_object_dict:
+            query_obj.write_id(_id)
+            query_obj.write_seq(id_to_read_object_dict[_id].seq.replace(b'-', b''), split=False)
+        query_obj.close()
+
+        target_obj = u.FastaOutput(target)
+        target_obj.write_id(node_target.reads[0].md5id)
+        target_obj.write_seq(node_target.reads[0].seq.replace(b'-', b''), split=False)
+        target_obj.close()
+
+        b = _perform_blast(query, target, output, params=params,
+                           log_file=log_file,
+                           job=job_name,
+                           parallel=not no_multi_processes,
+                           number_of_processes=number_of_processes,
+                           number_of_blast_threads=number_of_blast_threads,
+                           keep_tmp=keep_tmp, logger_obj=logger_obj)
+
+        # something semi-smart: get all the read ids that are more similar to the rep_seq
+        # than allowed max_variation; keep them, remove anything that doesn't show up here.
+        # the other option would be to search for low similarity guys, but it would have
+        # required much more computational investment.
+        similarity_dict = b.get_results_dict(min_identity=min_percent_identity)
+        read_ids_to_keep = set(similarity_dict.keys())
+        all_read_ids = set(id_to_read_object_dict.keys())
+        outliers = all_read_ids.difference(read_ids_to_keep)
+
+        # remember the outliers
+        outliers_reads = [id_to_read_object_dict[_id] for _id in outliers]
+
+        # remove the outliers
+        node_target.reads = [rd for rd in node_target.reads if rd not in outliers_reads]
+
+        if len(outliers):
+            node_target.dirty = True
+            logger_obj.info('%d outliers removed from node: %s (max frequency: %d; mean frequency: %.2f)'
+                             % (sum([id_to_read_object_dict[_id].frequency for _id in outliers]),
+                                node_target.node_id,
+                                max([id_to_read_object_dict[_id].frequency for _id in outliers]),
+                                numpy.mean([id_to_read_object_dict[_id].frequency for _id in outliers]),))
+
+            return node_target, outliers_reads
+        else:
+            return None, []
 
 
 class Decomposer:
@@ -58,6 +145,7 @@ class Decomposer:
         self.no_multi_processes = False
         self.number_of_processes = 0
         self.number_of_blast_threads = 1
+        self.number_of_blast_processes = 1
         self.log_file_path = None
         self.keep_tmp = False
         self.skip_gen_html = True
@@ -88,6 +176,7 @@ class Decomposer:
             self.no_multi_processes = args.number_of_processes == 1
             self.number_of_processes = args.number_of_processes
             self.number_of_blast_threads = args.number_of_blast_threads
+            self.number_of_blast_processes = args.number_of_blast_processes
             self.keep_tmp = args.keep_tmp
             self.skip_gen_figures = args.skip_gen_figures
             self.skip_basic_analyses = args.skip_gen_figures
@@ -102,6 +191,8 @@ class Decomposer:
             self.number_of_processes = utils.Multiprocessing(None).num_thread
         if self.number_of_blast_threads == 0:
             self.number_of_blast_threads = utils.Multiprocessing(None).num_thread
+        if self.number_of_blast_processes == 0:
+            self.number_of_blast_processes = utils.Multiprocessing(None).num_thread
 
         self.decomposition_depth = -1
 
@@ -263,7 +354,7 @@ class Decomposer:
         self.check_apps()
         self.check_dirs()
 
-        # we have just enough to start logging.        
+        # we have just enough to start logging.
         self._init_logger()
         self.info_file_path = self.generate_output_destination('RUNINFO')
         self.run.init_info_file_obj(self.info_file_path)
@@ -312,7 +403,7 @@ class Decomposer:
 
         # to decide at what level should algorithm be concerned about divergent reads in a node, there has to be a
         #  threshold that defines what is the maximum variation from the most abundant unique sequence. if user did
-        # not define this value, it is being set here as follows (FIXME: this is a very crude way to do it): 
+        # not define this value, it is being set here as follows (FIXME: this is a very crude way to do it):
         if not self.maximum_variation_allowed:
             self.maximum_variation_allowed = int(round(self.topology.average_read_length * 1.0 / 100)) or 1
 
@@ -337,7 +428,7 @@ class Decomposer:
         self._generate_samples_dict()
         self._get_unit_counts_and_percents()
 
-        # all done.        
+        # all done.
         self._report_final_numbers()
 
         self._generate_ENVIRONMENT_file()
@@ -472,14 +563,14 @@ class Decomposer:
                                                           ('%.3f' % node.normalized_m) if self.normalize_m else None)
                 self.progress.update(p)
 
-                # IF the abundance of the second most abundant unique read in the node is smaller than 
+                # IF the abundance of the second most abundant unique read in the node is smaller than
                 #  the self.min_substantive_abundance criteria, there is no need to further decompose
                 # this node. because anything spawns from here, will end up in the outlier bin except
                 # the most abundant unique read. of course by not decomposing any further we are losing
                 #  the opportunity to 'purify' this node further, but we are not worried about it,
-                # because 'max_allowed_variation' outliers will be removed from this node later on.  
+                # because 'max_allowed_variation' outliers will be removed from this node later on.
                 # UPDATE: Well, this causes some serious purity issues. For instance a node with,
-                # 
+                #
                 # >Read_1|frequency:957
                 # >Read_2|frequency:120
                 # >Read_3|frequency:57
@@ -502,7 +593,7 @@ class Decomposer:
                 #   [(125, 2.0464393446710156), (131, 1.895461844238322), (118, 1.8954618442383218), ... ]
                 #
                 # Probably a function should be called here to make sure discriminants are not high entropy
-                # locations driven by homopolymer region associated indels, or dynamicaly set the number of 
+                # locations driven by homopolymer region associated indels, or dynamicaly set the number of
                 #  discriminants for a given node. for instance, if there is one base left in a node that is
                 #  to define two different organisms, this process should be able to *overwrite* the parameter
                 # self.number_of_discriminants.
@@ -735,7 +826,13 @@ class Decomposer:
 
         min_percent_identity = utils.get_percent_identity_for_N_base_difference(self.topology.average_read_length) - 1
         params = "-perc_identity %.2f" % min_percent_identity
-        b = self._perform_blast(query, target, output, params, job='HPS')  # agc
+        b = _perform_blast(query, target, output, params,
+                           log_file=self.generate_output_destination('BLAST.log'),
+                           job='HPS',
+                           parallel=not self.no_multi_processes,
+                           number_of_processes=self.number_of_processes,
+                           number_of_blast_threads=self.number_of_blast_threads,
+                           keep_tmp=self.keep_tmp, logger_obj=self.logger)  # agc
 
         self.progress.update('Generating similarity dict from blastn results')
         similarity_dict = b.get_results_dict(mismatches=0, gaps=1)
@@ -819,7 +916,7 @@ class Decomposer:
         self._refresh_topology()
 
     def _remove_outliers(self, iteration, standby_bin_only=False):
-        #  there are potential issues with the raw topology generated. 
+        #  there are potential issues with the raw topology generated.
         #
         # when one organism dominates a given node (when there are a lot of reads in the node from one template),
         # the entropy peaks indicating variation from organisms with lower abundances may be buried deep, and not
@@ -843,137 +940,27 @@ class Decomposer:
                                                                                 self.maximum_variation_allowed)
         param = "-perc_identity %.2f" % min_percent_identity
 
-        if self.no_multi_processes:
-            # single process processing
-            for i in range(0, len(node_list)):
-                node_id = node_list[i]
-                node = self.topology.nodes[node_id]
+        self.logger.info("Process in parallel...")
+        pool_lambda = Parallel(n_jobs=self.number_of_blast_processes, verbose=1, pre_dispatch='all')
+        final_results = pool_lambda((delayed(worker_remove_outliers)
+                                     (self.topology.nodes[node_id],
+                                      self.tmp_directory,
+                                      param, min_percent_identity,
+                                      self.generate_output_destination('BLAST_%s.log' % node_id),
+                                      self.no_multi_processes,
+                                      self.number_of_processes,
+                                      self.number_of_blast_threads,
+                                      self.keep_tmp,
+                                      self.logger)
+                                     for node_id in node_list))
 
-                self.progress.update(
-                    'Node ID: "%s" (%d of %d)' % (node.pretty_id, i + 1, len(self.topology.final_nodes)))
-
-                job = 'XO_%s_' % node_id
-                query, target, output = utils.get_temporary_file_names_for_BLAST_search(prefix=job,
-                                                                                        directory=self.tmp_directory)
-                id_to_read_object_dict = {}
-                for read_obj in node.reads[1:]:
-                    id_to_read_object_dict[read_obj.md5id] = read_obj
-
-                query_obj = u.FastaOutput(query)
-                for _id in id_to_read_object_dict:
-                    query_obj.write_id(_id)
-                    query_obj.write_seq(id_to_read_object_dict[_id].seq.replace(b'-', b''), split=False)
-                query_obj.close()
-
-                target_obj = u.FastaOutput(target)
-                target_obj.write_id(node.reads[0].md5id)
-                target_obj.write_seq(node.reads[0].seq.replace(b'-', b''), split=False)
-                target_obj.close()
-
-                b = self._perform_blast(query, target, output, params=param, job=job)
-
-                # while I feel ashamed for this redundancy, you go ahead and read the description
-                # written in the worker function below on this voodoo stuff.
-                similarity_dict = b.get_results_dict(min_identity=min_percent_identity)
-                read_ids_to_keep = set(similarity_dict.keys())
-                all_read_ids = set(id_to_read_object_dict.keys())
-                outliers = all_read_ids.difference(read_ids_to_keep)
-
-                if len(outliers):
-                    node.dirty = True
-                else:
-                    continue
-
-                self.progress.append(' / screening node to remove %d outliers' % len(outliers))
-
-                # for _id in outliers:  # agc
-                #     outlier_read_object = id_to_read_object_dict[_id]
-                #     node.reads.remove(outlier_read_object)
-                #     self.topology.store_outlier(outlier_read_object, 'maximum_variation_allowed_reason')
-
-                # remember the outliers  # agc
-                outliers_reads = [id_to_read_object_dict[_id] for _id in outliers]  # agc
-                self.topology.store_outliers(outliers_reads, 'maximum_variation_allowed_reason')  # agc
-                # remove the outliers  # agc
-                node.reads = [rd for rd in node.reads if rd.md5id not in outliers]  # agc
-
-                self.logger.info('%d outliers removed from node: %s'
-                                 % (sum([id_to_read_object_dict[_id].frequency for _id in outliers]), node_id))
-
-        else:
-            def worker_remove_outliers(node_id, shared_outlier_seqs_list, shared_dirty_nodes_list):
-                node_target = self.topology.nodes[node_id]
-
-                job_name = 'XO_%s_' % node_id
-                query, target, output = utils.get_temporary_file_names_for_BLAST_search(prefix=job_name,
-                                                                                        directory=self.tmp_directory)
-                id_to_read_object_dict = {}
-                for read_obj in node_target.reads[1:]:
-                    id_to_read_object_dict[read_obj.md5id] = read_obj
-
-                query_obj = u.FastaOutput(query)
-                for _id in id_to_read_object_dict:
-                    query_obj.write_id(_id)
-                    query_obj.write_seq(id_to_read_object_dict[_id].seq.replace(b'-', b''), split=False)
-                query_obj.close()
-
-                target_obj = u.FastaOutput(target)
-                target_obj.write_id(node_target.reads[0].md5id)
-                target_obj.write_seq(node_target.reads[0].seq.replace(b'-', b''), split=False)
-                target_obj.close()
-
-                b = self._perform_blast(query, target, output, params=param, job=job_name)  # agc
-
-                # something semi-smart: get all the read ids that are more similar to the rep_seq
-                # than allowed max_variation; keep them, remove anything that doesn't show up here.
-                # the other option would be to search for low similarity guys, but it would have
-                # required much more computational investment.
-                similarity_dict = b.get_results_dict(min_identity=min_percent_identity)
-                read_ids_to_keep = set(similarity_dict.keys())
-                all_read_ids = set(id_to_read_object_dict.keys())
-                outliers = all_read_ids.difference(read_ids_to_keep)
-
-                # for _id in outliers:  # agc
-                #     outlier_read_object = id_to_read_object_dict[_id]
-                #     node_target.reads.remove(outlier_read_object)
-                #     shared_outlier_seqs_list.append(outlier_read_object)
-
-                # remember the outliers  # agc
-                outliers_reads = [id_to_read_object_dict[_id] for _id in outliers]  # agc
-                shared_outlier_seqs_list += outliers_reads  # agc
-                # remove the outliers  # agc
-                node_target.reads = [rd for rd in node_target.reads if rd not in outliers_reads]  # agc
-
-                if len(outliers):
-                    node_target.dirty = True
-                    shared_dirty_nodes_list.append(node_target)
-
-                    self.logger.info('%d outliers removed from node: %s (max frequency: %d; mean frequency: %.2f)'
-                                     % (sum([id_to_read_object_dict[_id].frequency for _id in outliers]),
-                                        node_id,
-                                        max([id_to_read_object_dict[_id].frequency for _id in outliers]),
-                                        numpy.mean([id_to_read_object_dict[_id].frequency for _id in outliers]),))
-
-            mp = utils.Multiprocessing(worker_remove_outliers, self.number_of_processes)
-            shared_dirty_nodes_list = mp.get_empty_shared_array()
-            shared_outlier_seqs_list = mp.get_empty_shared_array()
-
-            # arrange processes
-            processes_to_run = []
-            for node in node_list:
-                processes_to_run.append((node, shared_outlier_seqs_list, shared_dirty_nodes_list), )
-
-            # start the main loop to run all processes
-            mp.run_processes(processes_to_run, self.progress)
-
-            for node in shared_dirty_nodes_list:
+        for (node, outliers) in final_results:
+            if node:
                 self.topology.nodes[node.node_id] = node
-
-            for outlier_read_object in shared_outlier_seqs_list:
-                self.topology.store_outlier(outlier_read_object, 'maximum_variation_allowed_reason')
+                for outlier_read_object in outliers:
+                    self.topology.store_outlier(outlier_read_object, 'maximum_variation_allowed_reason')
 
         self.progress.end()
-
         self._refresh_topology()
 
     def _relocate_all_outliers(self):
@@ -1015,7 +1002,13 @@ class Decomposer:
         self.progress.update('Running blastn (num outliers: %s, num final nodes: %s)' %
                              (pretty_print(len(outliers)), pretty_print(len(self.topology.final_nodes))))
         params = "-perc_identity %.2f -max_target_seqs 1" % min_percent_identity
-        b = self._perform_blast(query, target, output, params, job='RO_%s_' % reason)
+        b = _perform_blast(query, target, output, params,
+                           log_file=self.generate_output_destination('BLAST.log'),
+                           job='RO_%s_' % reason,
+                           parallel=not self.no_multi_processes,
+                           number_of_processes=self.number_of_processes,
+                           number_of_blast_threads=self.number_of_blast_threads,
+                           keep_tmp=self.keep_tmp, logger_obj=self.logger)
 
         self.progress.update('Generating similarity dict from blastn results')
         similarity_dict = b.get_results_dict(min_identity=min_percent_identity)
@@ -1297,25 +1290,6 @@ class Decomposer:
                 f.write("%s\n" % node.representative_seq.replace(b'-', b'').decode())
         self.progress.end()
         self.run.info('node_representatives_file_path', node_representatives_file_path)
-
-    def _perform_blast(self, query, target, output, params, job="NONE"):
-        s = blast.LocalBLAST(query, target, output, log=self.generate_output_destination('BLAST.log'))
-        self.logger.info('local blast request for job "%s": (q) %s (t) %s (o) %s (p) %s (#th) %s'
-                         % (job, query, target, output, params, self.number_of_blast_threads))
-        s.make_blast_db()
-        self.logger.info('makeblastdb for %s: %s' % (job, s.makeblastdb_cmd))
-
-        # Add number of threads to blast
-        s.params = "%s -num_threads %d" % (params, self.number_of_blast_threads)
-
-        if self.no_multi_processes:  # agc
-            s.search()
-            self.logger.info('blastn for %s: %s' % (job, s.search_cmd))
-        else:
-            s.search_parallel(self.number_of_processes, 2000, keep_parts=self.keep_tmp)  # agc
-            self.logger.info('parallel blastn for %s: %s' % (job, s.search_cmd))
-
-        return s
 
     def _generate_html_output(self):
         from Oligotyping.utils.html.error import HTMLError

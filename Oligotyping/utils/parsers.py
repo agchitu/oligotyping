@@ -86,13 +86,22 @@ def decomposer():
                              'If set to 1 it will mean no multi-processing used.'
                              'The multiprocessing package is used which means the memory usage will grow proportionally'
                              ' to the number of processes which for large data sets will be prohibitive')
-    parser.add_argument('-T', '--number-of-blast-threads', type=int, default=1, metavar="INTEGER",
+    parser.add_argument('--number-of-blast-threads', type=int, default=1, metavar="INTEGER",
                         help='Number of threads to use when running blast. '
                              'It is a good idea to keep this number smaller than the number of CPU cores available. '
                              'If set to 0, this number will be set to 90%% of available cores, '
                              'or (available cores - 1) if 10%% of the cores is a number smaller than 1'
                              'This is true multi-threading and will be useful when running single process experiments'
                              '(P=1 on a large data set)')
+    parser.add_argument('--number-of-blast-processes', type=int, default=1, metavar="INTEGER",
+                        help='Number of blast processes to run in parallel. '
+                             'It is a good idea to keep this number smaller than the number of CPU cores available. '
+                             'If set to 0, this number will be set to 90%% of available cores, '
+                             'or (available cores - 1) if 10%% of the cores is a number smaller than 1'
+                             'This has higher overhead than a multi-threading solution but it will '
+                             'run considerably faster when many small blast runs are needed, '
+                             'such as when removing outliers. '
+                             'It is recomended to use this even when blast is started with multi-threading on')
     parser.add_argument('-E', '--sample-mapping', metavar='FILEPATH', default=None,
                         help='TAB delimited categorical mapping of samples to be used for post-analysis\
                                 visualizations. Refer to the tutorial for the file format')
