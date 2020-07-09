@@ -568,7 +568,7 @@ class Decomposer:
                 if node.competing_unique_sequences_ratio < self.min_node_competing_sequences_ratio or \
                         node.density > self.max_node_density:
                     # Finalize this node.
-                    self.logger.info('finalize node (CUSR/ND): %s' % node_id)
+                    self.logger.info('finalize node (CUSR/DEN): %s' % node_id)
                     continue
 
                 #  find out about the entropy distribution in the given node:
@@ -586,29 +586,30 @@ class Decomposer:
                                                           ('%.3f' % node.normalized_m) if self.normalize_m else None)
                 self.progress.update(p)
 
-                # IF the abundance of the second most abundant unique read in the node is smaller than
-                #  the self.min_substantive_abundance criteria, there is no need to further decompose
-                # this node. because anything spawns from here, will end up in the outlier bin except
-                # the most abundant unique read. of course by not decomposing any further we are losing
-                #  the opportunity to 'purify' this node further, but we are not worried about it,
-                # because 'max_allowed_variation' outliers will be removed from this node later on.
-                # UPDATE: Well, this causes some serious purity issues. For instance a node with,
-                #
-                # >Read_1|frequency:957
-                # >Read_2|frequency:120
-                # >Read_3|frequency:57
-                # >Read_4|frequency:7
-                #
-                # is finalized due to SMA < MSA although the entropy looked like this:
-                #
-                #    http://i.imgur.com/ctFnJE2.png
-                #
-                # when M = 300. This begs for a FIXME.
-                #
-                if node.reads[1].frequency < self.min_substantive_abundance:
-                    # we are done with this node.
-                    self.logger.info('finalize node (SMA < MSA): %s' % node_id)
-                    continue
+                # Fixed agc
+                # # IF the abundance of the second most abundant unique read in the node is smaller than
+                # #  the self.min_substantive_abundance criteria, there is no need to further decompose
+                # # this node. because anything spawns from here, will end up in the outlier bin except
+                # # the most abundant unique read. of course by not decomposing any further we are losing
+                # #  the opportunity to 'purify' this node further, but we are not worried about it,
+                # # because 'max_allowed_variation' outliers will be removed from this node later on.
+                # # UPDATE: Well, this causes some serious purity issues. For instance a node with,
+                # #
+                # # >Read_1|frequency:957
+                # # >Read_2|frequency:120
+                # # >Read_3|frequency:57
+                # # >Read_4|frequency:7
+                # #
+                # # is finalized due to SMA < MSA although the entropy looked like this:
+                # #
+                # #    http://i.imgur.com/ctFnJE2.png
+                # #
+                # # when M = 300. This begs for a FIXME.
+                # #
+                # if node.reads[1].frequency < self.min_substantive_abundance:
+                #     # we are done with this node.
+                #     self.logger.info('finalize node (SMA < MSA): %s' % node_id)
+                #     continue
 
                 # discriminants for this node are being selected from the list of entropy tuples:
                 # entropy_tpls look like this:
@@ -629,7 +630,7 @@ class Decomposer:
 
                 if len(node.discriminants) == 0:
                     # FIXME: Finalize this node.
-                    self.logger.info('finalize node (ND): %s' % node_id)
+                    self.logger.info('finalize node (DIS): %s' % node_id)
                     continue
                 else:
                     self.logger.info('using %d D (%s) to decompose: %s'
