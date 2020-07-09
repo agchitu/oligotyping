@@ -433,12 +433,15 @@ class Node:
             self.normalized_m = 0.05
 
     def do_competing_unique_sequences_ratio_and_density(self):
+        """
+        Calculate the node density and competing ratio
+        """
         if len(self.reads) == 1:
             self.competing_unique_sequences_ratio = 0
         else:
-            self.competing_unique_sequences_ratio = self.reads[1].frequency * 1.0 / self.reads[0].frequency
+            self.competing_unique_sequences_ratio = self.reads[1].frequency / self.reads[0].frequency
 
-        self.density = self.reads[0].frequency * 1.0 / self.size
+        self.density = self.reads[0].frequency / self.size
 
     def refresh(self):
         self.set_representative()

@@ -44,6 +44,19 @@ def decomposer():
                                 most appropriate, and most cases, the only noise filtering parameter. If the user\
                                 does not set a value for minimum substantive abundance, MED algorithm will set\
                                 one by default by dividing the number of reads in the input dataset by 5,000.')
+    parser.add_argument('-D', '--max-node-density', type=float, default=0.85, metavar="FLOAT",
+                        help='Node density is defined as the ratio of most abundant unique read count to all reads'
+                             ' that are accumulated in the node. The higher the number, the lower the variation within '
+                             'the node. The node will not be futher processed when the internal density is higher '
+                             'than the value provided by this argument. This will interact with the minimum entropy')
+    parser.add_argument('-C', '--min-node-competing-sequences-ratio', type=float, default=0.0005, metavar="FLOAT",
+                        help='The node competing sequences ratio is defined as the ratio between '
+                             'the second most abundant read and the most abundant unique read count in a node. '
+                             'The smaller the number, the better the level of decomposition. '
+                             'However it is important to consider that one organism might be overprinting, '
+                             'increasing the ratio over a closely related organism that is trapped in the same node.'
+                             'The node will not be futher processed when the internal ratio is smaller '
+                             'than the value provided by this argument. This will interact with the minimum entropy')
     parser.add_argument('-V', '--maximum-variation-allowed', type=int, default=None, metavar='INTEGER',
                         help='This parameter is being used to remove "outliers" from nodes. The similarity of a\
                                 read in a node is less than --maximum-variation-allowed than the representative\

@@ -127,6 +127,8 @@ class Decomposer:
         self.number_of_discriminants = 4
         self.min_actual_abundance = 0
         self.min_substantive_abundance = None
+        self.max_node_density = .85
+        self.min_node_competing_sequences_ratio = 0.0005
         self.output_directory = None
         self.tmp_directory = None
         self.nodes_directory = None
@@ -164,6 +166,8 @@ class Decomposer:
             self.number_of_discriminants = args.number_of_discriminants or 3
             self.min_actual_abundance = args.min_actual_abundance
             self.min_substantive_abundance = args.min_substantive_abundance
+            self.max_node_density = args.max_node_density
+            self.min_node_competing_sequences_ratio = args.min_node_competing_sequences_ratio
             self.output_directory = args.output_directory
             self.project = args.project or os.path.basename(args.alignment).split('.')[0]
             self.sample_name_separator = args.sample_name_separator
@@ -398,6 +402,9 @@ class Decomposer:
         self.run.info('normalize_m', self.normalize_m)
         self.run.info('d', self.number_of_discriminants)
         self.run.info('A', self.min_actual_abundance)
+        self.run.info('M', self.min_substantive_abundance)
+        self.run.info('D', self.max_node_density)
+        self.run.info('C', self.min_node_competing_sequences_ratio)
 
         # If --min-substantive abundance is not zero, use it. otherwise a default value is
         # going to be computed for it after the topology is initiated and the number of reads
@@ -550,7 +557,6 @@ class Decomposer:
                 # better the level of decomposition. however it is important to consider that one organism
                 # might be overprinting, increasing the ratio over a closely related organism that trapped
                 # in the same node.
-                #
                 # 'node density' refers to the ratio of most abundant unique read count to all reads
                 # that are accumulated in the node. higher the number, lower the variation within the
                 # node.
@@ -559,7 +565,8 @@ class Decomposer:
                 p += ' / CUSR: %.2f / D: %.2f' % (node.competing_unique_sequences_ratio, node.density)
                 self.progress.update(p)
 
-                if node.competing_unique_sequences_ratio < 0.0005 or node.density > 0.85:
+                if node.competing_unique_sequences_ratio < self.min_node_competing_sequences_ratio or \
+                        node.density > self.max_node_density:
                     # Finalize this node.
                     self.logger.info('finalize node (CUSR/ND): %s' % node_id)
                     continue
@@ -620,7 +627,7 @@ class Decomposer:
                     node.discriminants = [d[0] for d in node.entropy_tpls[0:self.number_of_discriminants] if
                                           d[1] > self.min_entropy]
 
-                if not len(node.discriminants):
+                if len(node.discriminants) == 0:
                     # FIXME: Finalize this node.
                     self.logger.info('finalize node (ND): %s' % node_id)
                     continue
