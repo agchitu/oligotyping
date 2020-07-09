@@ -236,6 +236,11 @@ class Decomposer:
         self.across_samples_sum_normalized = {}
         self.across_samples_max_normalized = {}
 
+        self.num_total = 0
+        self.num_unique = 0
+        self.num_singleton = 0
+        self.num_freqle10 = 0
+
     def check_apps(self):
         try:
             blast.LocalBLAST(None, None, None)
@@ -315,6 +320,12 @@ class Decomposer:
 
         self.progress.update('May take a while depending on the number of reads... read data from file...')
         reads = utils.get_read_objects_from_file(self.alignment, self.progress)
+
+        # Get some info on the reads
+        self.num_unique = len(reads)
+        self.num_total = sum([r.frequency for r in reads])
+        self.num_singleton = len([r.frequency for r in reads if r.frequency==1])
+        self.num_freqle10 =  len([r.frequency for r in reads if r.frequency<=10])
 
         self.progress.update('May take a while depending on the number of reads... adding root node...')
         self.root = self.topology.add_new_node('root', reads, root=True)
@@ -408,7 +419,12 @@ class Decomposer:
             self.maximum_variation_allowed = int(round(self.topology.average_read_length * 1.0 / 100)) or 1
 
         self.run.info('maximum_variation_allowed', self.maximum_variation_allowed)
-        self.run.info('total_seq', pretty_print(self.topology.nodes['root'].size))
+        # self.run.info('total_seq', pretty_print(self.topology.nodes['root'].size))
+        # self.run.info('unique_seq', pretty_print(len(self.topology.nodes['root'].reads)))
+        self.run.info('total_seq', pretty_print(self.num_total))
+        self.run.info('unique_seq', pretty_print(self.num_unique))
+        self.run.info('singleton_seq', pretty_print(self.num_singleton))
+        self.run.info('freqle10_seq', pretty_print(self.num_freqle10))
         self.run.info('average_read_length', self.topology.average_read_length)
         self.run.info('alignment_length', self.topology.alignment_length)
         self.run.info('output_directory', self.output_directory)

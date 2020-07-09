@@ -1206,7 +1206,7 @@ class Run:
     def init_info_file_obj(self, info_file_path):
         self.info_file_obj = open(info_file_path, 'w')
 
-    def info(self, key, value, quiet=False, display_only=False, lc='blue', mc='yellow'):
+    def info(self, key, value, quiet=False, display_only=False, lc='green', mc='yellow'):
         if not display_only:
             self.info_dict[key] = value
 
@@ -1276,11 +1276,19 @@ def get_read_objects_from_file(input_file_path, progress_obj=None):
         read_objects.append(UniqueFASTAEntry(input_fasta.seq, input_fasta.ids, input_fasta.md5id))
 
         if progress_obj and (input_fasta.pos % 5000 == 0):
-            progress_obj.update('Reading input: # seq %s/freq %s/total unique %s/ max freq %s'
+            progress_obj.update('Reading input: # seq %s/freq %s/total unique %s/ min freq %s/ max freq %s'
                                 % (pretty_print(input_fasta.pos),
                                    pretty_print(len(input_fasta.ids)),
                                    pretty_print(input_fasta.total_unique),
+                                   pretty_print(input_fasta.min_freq),
                                    pretty_print(input_fasta.max_freq)))
+    if progress_obj:
+        progress_obj.update('Reading input: # seq %s/freq %s/total unique %s/ min freq %s/ max freq %s'
+                            % (pretty_print(input_fasta.pos),
+                               pretty_print(len(input_fasta.ids)),
+                               pretty_print(input_fasta.total_unique),
+                               pretty_print(input_fasta.min_freq),
+                               pretty_print(input_fasta.max_freq)))
 
     input_fasta.close()
     progress_obj.update('Cleanup memory...')

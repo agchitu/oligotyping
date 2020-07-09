@@ -87,6 +87,7 @@ class SequenceSource(object):
         self.unique = unique
         self.total_unique = 0
         self.max_freq = 0
+        self.min_freq = 0
         self.unique_hash_dict = {}
         self.unique_hash_list = []
         self.unique_next_hash = 0
@@ -121,10 +122,13 @@ class SequenceSource(object):
                                                    'seq': self.seq,
                                                    'count': 1}
 
-        sorted_descending_by_counts = sorted([(self.unique_hash_dict[seq_hash]['count'], seq_hash)
-                                              for seq_hash in self.unique_hash_dict], reverse=True)
+        sorted_descending_by_counts = sorted(
+            [(self.unique_hash_dict[seq_hash]['count'], seq_hash) for seq_hash in self.unique_hash_dict], reverse=True)
         self.unique_hash_list = [hs for _, hs in sorted_descending_by_counts]
-        self.max_freq = sorted_descending_by_counts[0][0]
+        decreasing_freq = [frq for frq, _ in sorted_descending_by_counts]
+        self.max_freq = decreasing_freq[0]
+        self.min_freq = decreasing_freq[-1]
+
         self.total_unique = len(self.unique_hash_dict)
         self.reset()
 
