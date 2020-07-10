@@ -126,7 +126,7 @@ class Decomposer:
         self.normalize_m = True
         self.number_of_discriminants = 4
         self.min_actual_abundance = 0
-        self.min_substantive_abundance = None
+        self.min_substantive_abundance = -1
         self.max_node_density = .85
         self.min_node_competing_sequences_ratio = 0.0005
         self.output_directory = None
@@ -141,7 +141,7 @@ class Decomposer:
         self.skip_refining_topology = False  # FIXME: ADD THIS IN PARSERS!
         self.skip_removing_outliers = False
         self.relocate_outliers = False
-        self.maximum_variation_allowed = None
+        self.maximum_variation_allowed = 0
         self.store_topology_dict = False
         self.merge_homopolymer_splits = False
         self.no_multi_processes = False
@@ -406,28 +406,22 @@ class Decomposer:
         self.run.info('D', self.max_node_density)
         self.run.info('C', self.min_node_competing_sequences_ratio)
 
-        # If --min-substantive abundance is not zero, use it. otherwise a default value is
-        # going to be computed for it after the topology is initiated and the number of reads
-        # in the dataset is known.
-        if self.min_substantive_abundance:
-            self.run.info('M', self.min_substantive_abundance)
-
         # initializing the topology.
         self._init_topology()
 
-        if not self.min_substantive_abundance:
+        # If the user did not set the minimum substantive abundance or
+        # set it to negative than calculate it from the read frequences
+        if self.min_substantive_abundance < 0:
             self.set_min_substantive_abundance()
             self.run.info('M', self.min_substantive_abundance)
 
         # to decide at what level should algorithm be concerned about divergent reads in a node, there has to be a
         #  threshold that defines what is the maximum variation from the most abundant unique sequence. if user did
         # not define this value, it is being set here as follows (FIXME: this is a very crude way to do it):
-        if not self.maximum_variation_allowed:
+        if self.maximum_variation_allowed <= 0:
             self.maximum_variation_allowed = int(round(self.topology.average_read_length * 1.0 / 100)) or 1
 
         self.run.info('maximum_variation_allowed', self.maximum_variation_allowed)
-        # self.run.info('total_seq', pretty_print(self.topology.nodes['root'].size))
-        # self.run.info('unique_seq', pretty_print(len(self.topology.nodes['root'].reads)))
         self.run.info('total_seq', pretty_print(self.num_total))
         self.run.info('unique_seq', pretty_print(self.num_unique))
         self.run.info('singleton_seq', pretty_print(self.num_singleton))

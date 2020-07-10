@@ -57,7 +57,7 @@ def decomposer():
                              'increasing the ratio over a closely related organism that is trapped in the same node.'
                              'The node will not be futher processed when the internal ratio is smaller '
                              'than the value provided by this argument. This will interact with the minimum entropy')
-    parser.add_argument('-V', '--maximum-variation-allowed', type=int, default=None, metavar='INTEGER',
+    parser.add_argument('-V', '--maximum-variation-allowed', type=int, default=0, metavar='INTEGER',
                         help='This parameter is being used to remove "outliers" from nodes. The similarity of a\
                                 read in a node is less than --maximum-variation-allowed than the representative\
                                 sequence of the node, it is identified as an outlier. If not set, this value is \
