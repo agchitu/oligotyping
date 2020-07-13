@@ -556,7 +556,7 @@ class Decomposer:
                 # node.
                 node.do_competing_unique_sequences_ratio_and_density()
 
-                p += ' / CUSR: %.2f / D: %.2f' % (node.competing_unique_sequences_ratio, node.density)
+                p += ' / CUSR: %.4f / D: %.4f' % (node.competing_unique_sequences_ratio, node.density)
                 self.progress.update(p)
 
                 if node.competing_unique_sequences_ratio < self.min_node_competing_sequences_ratio or \
@@ -575,7 +575,7 @@ class Decomposer:
                     node.set_normalized_m(self.min_entropy, self.topology.frequency_of_the_most_abundant_read)
                     self.logger.info('normalized m (NM) for %s: %.3f ' % (node_id, node.normalized_m))
 
-                p += ' / ME: %.2f / AE: %.2f / NM: %s' % (max(node.entropy),
+                p += ' / ME: %.4f / AE: %.4f / NM: %s' % (max(node.entropy),
                                                           node.average_entropy,
                                                           ('%.3f' % node.normalized_m) if self.normalize_m else None)
                 self.progress.update(p)
