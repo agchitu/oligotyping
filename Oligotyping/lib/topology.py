@@ -37,7 +37,6 @@ class Topology:
         self.next_available_node_id = None
 
         self.frequency_of_the_most_abundant_read = None
-        self.average_read_length = None
         self.alignment_length = None
 
         self.logger = None
@@ -76,11 +75,6 @@ class Topology:
 
             self.frequency_of_the_most_abundant_read = max([read.frequency for read in node.reads])
             self.alignment_length = len(node.reads[0].seq)
-
-            # store the average read length. this is a terrible approximation,
-            # but it is way better to go through all reads which are most probably
-            # have the same length anyway (or minus/plus 2-3 nt at worst).
-            self.average_read_length = len(node.reads[0].seq.replace(b'-', b''))
 
         self.nodes[node_id] = node
 

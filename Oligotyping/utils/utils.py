@@ -1402,6 +1402,7 @@ class UniqueFASTAEntry:  # agc
         self.ids = ids
         self.md5id = md5id if md5id else hashlib.md5(self.seq).hexdigest()
         self.frequency = len(ids)
+        self.real_length = len(self.seq.replace(b'-', b''))
 
 # class UniqueFASTAEntry:  # agc
 #     def __init__(self, seq, ids):
