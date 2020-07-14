@@ -960,7 +960,7 @@ class Decomposer:
         param = "-perc_identity %.2f" % min_percent_identity
 
         self.logger.info("Process in parallel...")
-        pool_lambda = Parallel(n_jobs=self.number_of_blast_processes, verbose=1, pre_dispatch='all')
+        pool_lambda = Parallel(n_jobs=self.number_of_blast_processes, verbose=1, pre_dispatch='3*n_jobs')
         final_results = pool_lambda((delayed(worker_remove_outliers)
                                      (self.topology.nodes[node_id],
                                       self.tmp_directory,
