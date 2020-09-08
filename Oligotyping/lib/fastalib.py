@@ -14,7 +14,6 @@ import sys
 import numpy
 import hashlib
 
-
 from Oligotyping.utils.print_utils import pretty_print
 
 
@@ -76,8 +75,10 @@ class SequenceSource(object):
         self.name = None
         self.lazy_init = lazy_init
         self.allow_mixed_case = allow_mixed_case
-        self.progress_obj=progress_obj
+        self.progress_obj = progress_obj
 
+        self.attribute_sep = ";"
+        self.freq_attribute = "size"
         self.pos = 0
         self.id = None
         self.md5id = None
@@ -107,20 +108,28 @@ class SequenceSource(object):
     def init_unique_hash(self):
         if self.progress_obj:
             self.progress_obj.append('Hashing the reads into memory: %s' % (pretty_print(self.pos)))
-            
+
         while self.next_regular():
             if self.progress_obj and self.pos % 5000 == 0:
                 self.progress_obj.update('Hashing the reads into memory: %s' % (pretty_print(self.pos)))
 
             seq_hash = hashlib.sha1(self.seq.upper()).hexdigest()
+            # Get the frequency in case the reads are "de-replicated"
+            attributes = self.id.split(self.attribute_sep)
+            freq_attribute = [a for a in attributes if self.freq_attribute in a]
+            if len(freq_attribute) > 0:
+                freq = int(freq_attribute[0][len(self.freq_attribute) + 1:])
+            else:
+                freq = 1
+
             if seq_hash in self.unique_hash_dict:
                 self.unique_hash_dict[seq_hash]['ids'].append(self.id)
-                self.unique_hash_dict[seq_hash]['count'] += 1
+                self.unique_hash_dict[seq_hash]['count'] += freq
             else:
                 self.unique_hash_dict[seq_hash] = {'id': self.id,
                                                    'ids': [self.id],
                                                    'seq': self.seq,
-                                                   'count': 1}
+                                                   'count': freq}
 
         sorted_descending_by_counts = sorted(
             [(self.unique_hash_dict[seq_hash]['count'], seq_hash) for seq_hash in self.unique_hash_dict], reverse=True)
