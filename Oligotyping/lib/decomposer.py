@@ -1305,7 +1305,7 @@ class Decomposer:
             self.progress.update('Being generated')
             for node_id in self.topology.final_nodes:
                 node = self.topology.get_node(node_id)
-                f.write('>%s|size:%d\n' % (node.node_id, node.size))
+                f.write('>%s;size=%d\n' % (node.node_id, node.size))
                 f.write("%s\n" % node.representative_seq.replace(b'-', b'').decode())
         self.progress.end()
         self.run.info('node_representatives_file_path', node_representatives_file_path)
